@@ -1,0 +1,14 @@
+# Core async web framework and WebSocket support
+aiohttp>=3.8.0
+websockets>=11.0.0
+
+# Scientific computing and signal processing
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Optional: For better performance (if you want to use it later)
+# numba>=0.56.0
+
+# Development and debugging (optional)
+# pytest>=7.0.0
+# black>=22.0.0

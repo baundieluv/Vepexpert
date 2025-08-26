@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vepexper - Dual EMG with Posture Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            position: relative;
+            height: 250px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #fafafa;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .connected {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .disconnected {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .status-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-title {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .imbalance-meter {
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .imbalance-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #FFEB3B, #F44336);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .angle-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .angle-card {
+            background-color: #e8f4fa;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .angle-value {
+            font-size: 30px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #0277bd;
+        }
+        .angle-label {
+            font-size: 16px;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: #555;
+        }
+        .angle-indicator {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            margin: 10px 0;
+        }
+        .angle-gauge {
+            width: 100%;
+            height: 100%;
+            background-color: #f0f0f0;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+        }
+        .angle-needle {
+            position: absolute;
+            width: 4px;
+            height: 50%;
+            background-color: #e53935;
+            bottom: 50%;
+            left: calc(50% - 2px);
+            transform-origin: bottom center;
+            transition: transform 0.3s ease;
+            z-index: 2;
+        }
+        .angle-center {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #616161;
+            border-radius: 50%;
+            top: calc(50% - 10px);
+            left: calc(50% - 10px);
+            z-index: 3;
+        }
+        .angle-markings {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .angle-marking {
+            position: absolute;
+            width: 2px;
+            height: 10px;
+            background-color: #9e9e9e;
+            bottom: 50%;
+            left: calc(50% - 1px);
+            transform-origin: bottom center;
+        }
+        .angle-marking.major {
+            height: 15px;
+            width: 3px;
+            background-color: #616161;
+        }
+        .angle-reference {
+            position: absolute;
+            width: 4px;
+            height: 50%;
+            background-color: #4CAF50;
+            opacity: 0.5;
+            bottom: 50%;
+            left: calc(50% - 2px);
+            transform-origin: bottom center;
+            z-index: 1;
+        }
+        .posture-score-container {
+            background-color: #f0f8ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .posture-score {
+            font-size: 64px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #2196F3;
+        }
+        .posture-label {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .posture-status {
+            font-size: 16px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .posture-good {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .posture-average {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+        }
+        .posture-poor {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .posture-progress {
+            height: 12px;
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 6px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .posture-progress-bar {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+        .calibration-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .data-export {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .data-export h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .export-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .export-button {
+            background-color: #2196F3;
+            padding: 8px 16px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .export-button:hover {
+            background-color: #0b7dda;
+        }
+        .export-icon {
+            width: 16px;
+            height: 16px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            z-index: 9999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .notification.show {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .charts-grid, .status-container, .angle-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vepexpert UI - Dual EMG with Posture Analysis</h1>
+        
+        <div class="status-container">
+            <div id="connectionStatus" class="status disconnected">
+                Disconnected
+            </div>
+            
+            <div id="esp32Status" class="status disconnected">
+                ESP32: Disconnected
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" value="ws://192.168.1.88:8080" />
+            </div>
+            
+            <div class="control-group">
+                <label for="notchFilter">Notch Filter (60Hz):</label>
+                <input type="checkbox" id="notchFilter" checked />
+            </div>
+            
+            <div class="control-group">
+                <label for="lowPassFreq">Low Pass Filter (Hz):</label>
+                <input type="range" id="lowPassFreq" min="5" max="400" value="330" />
+                <span id="lowPassValue">330 Hz</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="recordOneMinuteBtn" class="record-button" disabled>
+                    <span class="record-icon"></span>
+                    Record 1 Minute
+                </button>
+                <div id="recordingStatus" class="recording-status">Ready</div>
+            </div>
+            
+            
+            <div class="control-group">
+                <label for="highPassFreq">High Pass Filter (Hz):</label>
+                <input type="range" id="highPassFreq" min="0.1" max="50" step="0.1" value="20" />
+                <span id="highPassValue">20 Hz</span>
+            </div>
+            
+            <div class="control-group">
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+            </div>
+            <div class="control-group">
+                <button id="recordOneMinuteBtn" class="record-button" disabled>
+                    <span class="record-icon"></span>
+                    Record 1 Minute
+                </button>
+                <div id="recordingStatus" class="recording-status">Ready</div>
+            </div>            
+        </div>
+        
+        <div id="postureScoreSection" style="display: none;">
+            <h2>Posture Quality Assessment</h2>
+            <div class="posture-score-container">
+                <div class="posture-label">Your Posture Score</div>
+                <div id="postureScore" class="posture-score">--</div>
+                <div class="posture-progress">
+                    <div id="postureProgressBar" class="posture-progress-bar" style="width: 0%; background-color: #2196F3;"></div>
+                </div>
+                <div id="postureStatus" class="posture-status">Not calibrated</div>
+                <div id="postureDeviation" style="margin-top: 10px;">Deviation from baseline: --</div>
+                
+                <div class="calibration-controls">
+                    <button id="calibratePostureBtn" class="export-button">Set as Baseline Posture</button>
+                    <button id="resetCalibrationBtn" class="export-button" style="background-color: #9e9e9e;">Reset Calibration</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="angleSection" style="display: none;">
+            <h2>Lumbar Angle Measurements</h2>
+            <div class="angle-container">
+                <div class="angle-card">
+                    <div class="angle-label">Pitch Angle (Forward/Backward)</div>
+                    <div class="angle-indicator">
+                        <div class="angle-gauge">
+                            <div class="angle-markings" id="pitchMarkings"></div>
+                            <div class="angle-reference" id="pitchReference" style="transform: rotate(0deg);"></div>
+                            <div class="angle-needle" id="pitchNeedle" style="transform: rotate(0deg);"></div>
+                            <div class="angle-center"></div>
+                        </div>
+                    </div>
+                    <div id="pitchValue" class="angle-value">0.0°</div>
+                </div>
+                
+                <div class="angle-card">
+                    <div class="angle-label">Roll Angle (Side-to-Side)</div>
+                    <div class="angle-indicator">
+                        <div class="angle-gauge">
+                            <div class="angle-markings" id="rollMarkings"></div>
+                            <div class="angle-reference" id="rollReference" style="transform: rotate(0deg);"></div>
+                            <div class="angle-needle" id="rollNeedle" style="transform: rotate(0deg);"></div>
+                            <div class="angle-center"></div>
+                        </div>
+                    </div>
+                    <div id="rollValue" class="angle-value">0.0°</div>
+                </div>
+            </div>
+        </div>
+        
+        <h2>EMG Statistics</h2>
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">Channel 1 RMS</div>
+                <div id="rms1Value" class="stat-value">0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Channel 2 RMS</div>
+                <div id="rms2Value" class="stat-value">0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Channel 1 Mean</div>
+                <div id="mean1Value" class="stat-value">0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Channel 2 Mean</div>
+                <div id="mean2Value" class="stat-value">0.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Muscle Imbalance</div>
+                <div id="imbalanceValue" class="stat-value">0.00%</div>
+                <div class="imbalance-meter">
+                    <div id="imbalanceFill" class="imbalance-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <h2>EMG Signal Visualization</h2>
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">Raw EMG Data - Channel 1</div>
+                <canvas id="rawDataChart1"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Raw EMG Data - Channel 2</div>
+                <canvas id="rawDataChart2"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Filtered EMG Data - Channel 1</div>
+                <canvas id="filteredDataChart1"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title">Filtered EMG Data - Channel 2</div>
+                <canvas id="filteredDataChart2"></canvas>
+            </div>
+        </div>
+        
+        <div class="data-export">
+            <h3>Download Session Data</h3>
+            <p>Export your EMG and posture data as CSV files for further analysis or record-keeping.</p>
+            
+            <div class="export-buttons">
+                <button id="download10Min" class="export-button" disabled>
+                    <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Last 10 Minutes
+                </button>
+                <button id="download30Min" class="export-button" disabled>
+                    <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Last 30 Minutes
+                </button>
+                <button id="download1Hour" class="export-button" disabled>
+                    <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Last Hour
+                </button>
+                <button id="downloadAll" class="export-button" disabled>
+                    <svg class="export-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Entire Session
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification container -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Chart configurations
+        const MAX_DATA_POINTS = 250; // Reduced from 500 to improve performance
+        let rawData1 = Array(MAX_DATA_POINTS).fill(0);
+        let filteredData1 = Array(MAX_DATA_POINTS).fill(0);
+        let rawData2 = Array(MAX_DATA_POINTS).fill(0);
+        let filteredData2 = Array(MAX_DATA_POINTS).fill(0);
+        let labels = Array(MAX_DATA_POINTS).fill('');
+        
+        // Initialize stats
+        let rms1 = 0, rms2 = 0;
+        let mean1 = 0, mean2 = 0;
+        let imbalance = 0;
+        let pitch = 0, roll = 0;
+        let hasMpuData = false;
+        
+        // Posture calibration
+        let isCalibrated = false;
+        let baselinePitch = 0;
+        let baselineRoll = 0;
+        let baselineImbalance = 0;
+        let postureScore = 0;
+        
+        // Data recording for export
+        let sessionData = [];
+        let recordingStartTime = null;
+        const RECORD_INTERVAL = 1000; // Record data every second for export
+        let lastRecordTime = 0;
+        
+        // Animation frame management
+        let animationFrameId = null;
+        let updatesPending = false;
+        let lastUpdateTime = 0;
+        const THROTTLE_INTERVAL = 50; // Limit updates to every 50ms (20 fps)
+        
+        // Batch updates for UI elements
+        let pendingUpdates = {
+            charts: false,
+            angles: false,
+            stats: false,
+            postureScore: false
+        };
+        
+        // Initialize charts with optimized options
+        const rawCtx1 = document.getElementById('rawDataChart1').getContext('2d');
+        const filteredCtx1 = document.getElementById('filteredDataChart1').getContext('2d');
+        const rawCtx2 = document.getElementById('rawDataChart2').getContext('2d');
+        const filteredCtx2 = document.getElementById('filteredDataChart2').getContext('2d');
+        
+        // Optimize chart options to reduce rendering cost
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: false
+                    },
+                    ticks: {
+                        display: false
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: false
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: false // Disable tooltips for better performance
+                }
+            },
+            animation: {
+                duration: 0 // Disable animations
+            },
+            elements: {
+                line: {
+                    tension: 0 // Disable bezier curves for better performance
+                },
+                point: {
+                    radius: 0 // Hide points for better performance
+                }
+            }
+        };
+        
+        // Create charts with optimized options
+        const rawChart1 = new Chart(rawCtx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Raw EMG Signal - Channel 1',
+                    data: rawData1,
+                    borderColor: 'rgb(255, 99, 132)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: commonOptions
+        });
+        
+        const filteredChart1 = new Chart(filteredCtx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Filtered EMG Signal - Channel 1',
+                    data: filteredData1,
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: commonOptions
+        });
+        
+        const rawChart2 = new Chart(rawCtx2, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Raw EMG Signal - Channel 2',
+                    data: rawData2,
+                    borderColor: 'rgb(255, 159, 64)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: commonOptions
+        });
+        
+        const filteredChart2 = new Chart(filteredCtx2, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Filtered EMG Signal - Channel 2',
+                    data: filteredData2,
+                    borderColor: 'rgb(75, 192, 192)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false
+                }]
+            },
+            options: commonOptions
+        });
+        
+        // WebSocket connection and UI controls
+        let ws = null;
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const serverUrlInput = document.getElementById('serverUrl');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const esp32Status = document.getElementById('esp32Status');
+        const notchFilterCheckbox = document.getElementById('notchFilter');
+        const lowPassFreqSlider = document.getElementById('lowPassFreq');
+        const highPassFreqSlider = document.getElementById('highPassFreq');
+        const lowPassValue = document.getElementById('lowPassValue');
+        const highPassValue = document.getElementById('highPassValue');
+        const notificationEl = document.getElementById('notification');
+        
+        // Cache DOM elements to avoid repeated queries
+        const rms1ValueElement = document.getElementById('rms1Value');
+        const rms2ValueElement = document.getElementById('rms2Value');
+        const mean1ValueElement = document.getElementById('mean1Value');
+        const mean2ValueElement = document.getElementById('mean2Value');
+        const imbalanceValueElement = document.getElementById('imbalanceValue');
+        const imbalanceFillElement = document.getElementById('imbalanceFill');
+        
+        // Angle elements
+        const angleSection = document.getElementById('angleSection');
+        const pitchValueElement = document.getElementById('pitchValue');
+        const rollValueElement = document.getElementById('rollValue');
+        const pitchNeedleElement = document.getElementById('pitchNeedle');
+        const rollNeedleElement = document.getElementById('rollNeedle');
+        const pitchReferenceElement = document.getElementById('pitchReference');
+        const rollReferenceElement = document.getElementById('rollReference');
+        
+        // Posture score elements
+        const postureScoreSection = document.getElementById('postureScoreSection');
+        const postureScoreElement = document.getElementById('postureScore');
+        const postureStatusElement = document.getElementById('postureStatus');
+        const postureProgressBarElement = document.getElementById('postureProgressBar');
+        const postureDeviationElement = document.getElementById('postureDeviation');
+        const calibratePostureBtn = document.getElementById('calibratePostureBtn');
+        const resetCalibrationBtn = document.getElementById('resetCalibrationBtn');
+        
+        // Download buttons
+        const download10MinBtn = document.getElementById('download10Min');
+        const download30MinBtn = document.getElementById('download30Min');
+        const download1HourBtn = document.getElementById('download1Hour');
+        const downloadAllBtn = document.getElementById('downloadAll');
+        
+        // Show a non-blocking notification
+        function showNotification(message, color = '#4CAF50', duration = 3000) {
+            notificationEl.textContent = message;
+            notificationEl.style.backgroundColor = color;
+            notificationEl.classList.add('show');
+            
+            setTimeout(() => {
+                notificationEl.classList.remove('show');
+            }, duration);
+        }
+        
+        // Request animation frame for UI updates
+        function requestUpdateFrame() {
+            if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(processUIUpdates);
+            }
+        }
+        
+        // Process all pending UI updates in a single animation frame
+        function processUIUpdates() {
+            const now = performance.now();
+            
+            // Throttle updates to avoid excessive rendering
+            if (now - lastUpdateTime >= THROTTLE_INTERVAL) {
+                lastUpdateTime = now;
+                
+                // Apply chart updates if needed
+                if (pendingUpdates.charts) {
+                    rawChart1.update();
+                    filteredChart1.update();
+                    rawChart2.update();
+                    filteredChart2.update();
+                    pendingUpdates.charts = false;
+                }
+                
+                // Apply angle updates if needed
+                if (pendingUpdates.angles) {
+                    applyAngleUpdates();
+                    pendingUpdates.angles = false;
+                }
+                
+                // Apply stats updates if needed
+                if (pendingUpdates.stats) {
+                    applyStatsUpdates();
+                    pendingUpdates.stats = false;
+                }
+                
+                // Apply posture score updates if needed
+                if (pendingUpdates.postureScore) {
+                    applyPostureScoreUpdates();
+                    pendingUpdates.postureScore = false;
+                }
+            }
+            
+            // Check if we need to continue requesting frames
+            const hasAnyPendingUpdates = Object.values(pendingUpdates).some(value => value);
+            
+            if (hasAnyPendingUpdates) {
+                // Continue updating if there are still pending updates
+                animationFrameId = requestAnimationFrame(processUIUpdates);
+            } else {
+                // No more updates pending, clear the animation frame ID
+                animationFrameId = null;
+            }
+        }
+        
+        // Pre-create angle markings HTML to avoid expensive DOM operations
+        function createAngleMarkings() {
+            const pitchMarkings = document.getElementById('pitchMarkings');
+            const rollMarkings = document.getElementById('rollMarkings');
+            
+            // Clear existing markings
+            pitchMarkings.innerHTML = '';
+            rollMarkings.innerHTML = '';
+            
+            // Create HTML strings for markings
+            let pitchMarkingsHTML = '';
+            let rollMarkingsHTML = '';
+            
+            // Create markings every 10 degrees for +/- 90 degrees
+            for (let i = -90; i <= 90; i += 10) {
+                // Pitch markings
+                const className = i % 30 === 0 ? 'angle-marking major' : 'angle-marking';
+                pitchMarkingsHTML += `<div class="${className}" style="transform: rotate(${i}deg)"></div>`;
+                
+                // Roll markings
+                rollMarkingsHTML += `<div class="${className}" style="transform: rotate(${i}deg)"></div>`;
+            }
+            
+            // Set HTML content (more efficient than multiple appendChild calls)
+            pitchMarkings.innerHTML = pitchMarkingsHTML;
+            rollMarkings.innerHTML = rollMarkingsHTML;
+        }
+        
+        // Update angle display with debouncing
+        function updateAngleDisplay() {
+            if (!hasMpuData) return;
+            
+            // Schedule angle UI updates instead of doing them immediately
+            pendingUpdates.angles = true;
+            
+            // Request animation frame if not already requested
+            requestUpdateFrame();
+        }
+        
+        // Perform actual angle UI updates
+        function applyAngleUpdates() {
+            // Update pitch angle
+            pitchValueElement.textContent = `${pitch.toFixed(1)}°`;
+            pitchNeedleElement.style.transform = `rotate(${pitch}deg)`;
+            
+            // Update roll angle
+            rollValueElement.textContent = `${roll.toFixed(1)}°`;
+            rollNeedleElement.style.transform = `rotate(${roll}deg)`;
+            
+            // Show baseline references if calibrated
+            if (isCalibrated) {
+                // Calculate posture score
+                calculatePostureScore();
+            }
+        }
+        
+        // Calculate posture score based on deviation from baseline
+        function calculatePostureScore() {
+            if (!isCalibrated || !hasMpuData) return;
+            
+            // Schedule posture score updates
+            pendingUpdates.postureScore = true;
+            
+            // Request animation frame if not already requested
+            requestUpdateFrame();
+        }
+        
+        // Apply posture score updates
+        function applyPostureScoreUpdates() {
+            // Calculate deviations
+            const pitchDeviation = Math.abs(pitch - baselinePitch);
+            const rollDeviation = Math.abs(roll - baselineRoll);
+            const imbalanceDeviation = Math.abs(imbalance - baselineImbalance);
+            
+            // Weight factors (can be adjusted based on clinical importance)
+            const pitchWeight = 0.5;
+            const rollWeight = 0.3;
+            const imbalanceWeight = 0.2;
+            
+            // Calculate weighted deviations (normalized)
+            const normalizedPitchDev = Math.min(pitchDeviation / 30, 1) * pitchWeight;
+            const normalizedRollDev = Math.min(rollDeviation / 15, 1) * rollWeight;
+            const normalizedImbalanceDev = Math.min(imbalanceDeviation / 30, 1) * imbalanceWeight;
+            
+            // Calculate total deviation (0 to 1, where 0 is perfect)
+            const totalDeviation = normalizedPitchDev + normalizedRollDev + normalizedImbalanceDev;
+            
+            // Calculate score (100 is perfect, 0 is worst)
+            postureScore = Math.round(100 * (1 - totalDeviation));
+            
+            // Update UI
+            postureScoreElement.textContent = postureScore;
+            postureProgressBarElement.style.width = `${postureScore}%`;
+            
+            // Set color based on score
+            let color;
+            let statusText;
+            let statusClass;
+            if (postureScore >= 80) {
+                color = '#4CAF50';  // Green
+                statusText = 'Excellent Posture';
+                statusClass = 'posture-good';
+            } else if (postureScore >= 60) {
+                color = '#FFEB3B';  // Yellow
+                statusText = 'Good Posture';
+                statusClass = 'posture-good';
+            } else if (postureScore >= 40) {
+                color = '#FF9800';  // Orange
+                statusText = 'Fair Posture';
+                statusClass = 'posture-average';
+            } else {
+                color = '#F44336';  // Red
+                statusText = 'Poor Posture';
+                statusClass = 'posture-poor';
+            }
+            
+            // Update UI
+            postureProgressBarElement.style.backgroundColor = color;
+            postureStatusElement.textContent = statusText;
+            postureStatusElement.className = 'posture-status ' + statusClass;
+            
+            // Calculate deviation description
+            const deviationText = `Deviation from baseline: Pitch ${pitchDeviation.toFixed(1)}°, Roll ${rollDeviation.toFixed(1)}°, Imbalance ${imbalanceDeviation.toFixed(1)}%`;
+            postureDeviationElement.textContent = deviationText;
+        }
+        
+        // Update stats display with batching
+        function updateStats(stats) {
+            // Store the stats for later updating
+            rms1 = stats.rms1;
+            rms2 = stats.rms2;
+            mean1 = stats.mean1;
+            mean2 = stats.mean2;
+            imbalance = stats.imbalance;
+            
+            // Check if MPU data is available
+            if (stats.hasOwnProperty('pitch') && stats.hasOwnProperty('roll')) {
+                hasMpuData = true;
+                
+                // Show sections if they were hidden
+                if (angleSection.style.display === 'none') {
+                    angleSection.style.display = 'block';
+                    postureScoreSection.style.display = 'block';
+                }
+                
+                // Update angle values
+                pitch = stats.pitch;
+                roll = stats.roll;
+                
+                // Schedule angle display update
+                updateAngleDisplay();
+            }
+            
+            // Mark stats for update
+            pendingUpdates.stats = true;
+            
+            // Request animation frame if not already scheduled
+            requestUpdateFrame();
+        }
+        
+        // Apply stats updates to the UI
+        function applyStatsUpdates() {
+            // Update the stats display
+            rms1ValueElement.textContent = rms1.toFixed(2);
+            rms2ValueElement.textContent = rms2.toFixed(2);
+            mean1ValueElement.textContent = mean1.toFixed(2);
+            mean2ValueElement.textContent = mean2.toFixed(2);
+            imbalanceValueElement.textContent = `${imbalance.toFixed(2)}%`;
+            
+            // Update imbalance meter (capped at 100%)
+            const fillWidth = Math.min(imbalance, 100);
+            imbalanceFillElement.style.width = `${fillWidth}%`;
+        }
+        
+        // Record data point for export
+        function recordDataPoint() {
+            if (!recordingStartTime) {
+                recordingStartTime = new Date();
+            }
+            
+            const timestamp = new Date();
+            const elapsedTimeMs = timestamp - recordingStartTime;
+            
+            const dataPoint = {
+                timestamp: timestamp.toISOString(),
+                elapsedTimeMs: elapsedTimeMs,
+                rms1: rms1,
+                rms2: rms2,
+                mean1: mean1,
+                mean2: mean2,
+                imbalance: imbalance,
+                pitch: hasMpuData ? pitch : null,
+                roll: hasMpuData ? roll : null,
+                postureScore: isCalibrated ? postureScore : null
+            };
+            
+            sessionData.push(dataPoint);
+            
+            // Enable download buttons after collecting some data
+            if (sessionData.length > 10) {
+                downloadAllBtn.disabled = false;
+                download10MinBtn.disabled = false;
+                if (elapsedTimeMs >= 30 * 60 * 1000) {
+                    download30MinBtn.disabled = false;
+                }
+                if (elapsedTimeMs >= 60 * 60 * 1000) {
+                    download1HourBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Generate and download CSV file
+        function generateCSV(timeRangeMs = null) {
+            if (sessionData.length === 0) {
+                showNotification('No data available for export', '#F44336');
+                return;
+            }
+            
+            // Disable download buttons while generating CSV
+            download10MinBtn.disabled = true;
+            download30MinBtn.disabled = true;
+            download1HourBtn.disabled = true;
+            downloadAllBtn.disabled = true;
+            
+            // Use setTimeout to prevent UI blocking during CSV generation
+            setTimeout(() => {
+                try {
+                    // Filter data based on time range if specified
+                    let dataToExport = sessionData;
+                    let timeRangeDescription = 'Full_Session';
+                    
+                    if (timeRangeMs) {
+                        const now = new Date();
+                        const cutoffTime = now - timeRangeMs;
+                        dataToExport = sessionData.filter(d => new Date(d.timestamp) >= cutoffTime);
+                        
+                        if (timeRangeMs === 10 * 60 * 1000) {
+                            timeRangeDescription = 'Last_10_Minutes';
+                        } else if (timeRangeMs === 30 * 60 * 1000) {
+                            timeRangeDescription = 'Last_30_Minutes';
+                        } else if (timeRangeMs === 60 * 60 * 1000) {
+                            timeRangeDescription = 'Last_Hour';
+                        }
+                    }
+                    
+                    // Create CSV header
+                    const headers = [
+                        'Timestamp',
+                        'Elapsed Time (s)',
+                        'RMS Channel 1',
+                        'RMS Channel 2',
+                        'Mean Channel 1',
+                        'Mean Channel 2',
+                        'Muscle Imbalance (%)'
+                    ];
+                    
+                    // Add angle and posture data headers if available
+                    if (hasMpuData) {
+                        headers.push('Pitch Angle (°)', 'Roll Angle (°)');
+                    }
+                    
+                    if (isCalibrated) {
+                        headers.push('Posture Score (0-100)');
+                    }
+                    
+                    // Create CSV content in chunks to avoid UI blocking
+                    let csvContent = headers.join(',') + '\n';
+                    const chunkSize = 1000; // Process 1000 records at a time
+                    
+                    // Show progress notification
+                    showNotification('Generating CSV file...', '#2196F3', 10000);
+                    
+                    // Function to process data in chunks
+                    function processDataChunk(startIndex) {
+                        const endIndex = Math.min(startIndex + chunkSize, dataToExport.length);
+                        
+                        for (let i = startIndex; i < endIndex; i++) {
+                            const d = dataToExport[i];
+                            const elapsedTimeSec = (d.elapsedTimeMs / 1000).toFixed(1);
+                            let row = [
+                                d.timestamp,
+                                elapsedTimeSec,
+                                d.rms1.toFixed(2),
+                                d.rms2.toFixed(2),
+                                d.mean1.toFixed(2),
+                                d.mean2.toFixed(2),
+                                d.imbalance.toFixed(2)
+                            ];
+                            
+                            if (hasMpuData) {
+                                row.push(d.pitch !== null ? d.pitch.toFixed(2) : '', d.roll !== null ? d.roll.toFixed(2) : '');
+                            }
+                            
+                            if (isCalibrated) {
+                                row.push(d.postureScore !== null ? d.postureScore : '');
+                            }
+                            
+                            csvContent += row.join(',') + '\n';
+                        }
+                        
+                        // Update progress notification
+                        const progress = Math.round((endIndex / dataToExport.length) * 100);
+                        showNotification(`Generating CSV file... ${progress}%`, '#2196F3', 10000);
+                        
+                        // If there's more data to process, schedule the next chunk
+                        if (endIndex < dataToExport.length) {
+                            setTimeout(() => processDataChunk(endIndex), 0);
+                        } else {
+                            // All chunks processed, create the download
+                            completeCSVGeneration(csvContent, timeRangeDescription);
+                        }
+                    }
+                    
+                    // Start processing the first chunk
+                    processDataChunk(0);
+                    
+                } catch (error) {
+                    console.error('Error generating CSV:', error);
+                    showNotification('Error generating CSV file. Please try again.', '#F44336');
+                    
+                    // Re-enable download buttons
+                    resetDownloadButtons();
+                }
+            }, 50); // Small delay to allow UI to update
+        }
+        
+        // Complete CSV generation and trigger download
+        function completeCSVGeneration(csvContent, timeRangeDescription) {
+            try {
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+                const filename = `vepexpert_data_${timeRangeDescription}_${timestamp}.csv`;
+                
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Show success notification
+                showNotification('CSV file generated successfully!', '#4CAF50');
+                
+                // Clean up
+                setTimeout(() => {
+                    URL.revokeObjectURL(url);
+                    resetDownloadButtons();
+                }, 100);
+            } catch (error) {
+                console.error('Error completing CSV download:', error);
+                showNotification('Error downloading CSV file. Please try again.', '#F44336');
+                resetDownloadButtons();
+            }
+        }
+        
+        // Reset download button states
+        function resetDownloadButtons() {
+            const hasEnoughData = sessionData.length > 10;
+            const elapsedTime = recordingStartTime ? (new Date() - recordingStartTime) : 0;
+            
+            downloadAllBtn.disabled = !hasEnoughData;
+            download10MinBtn.disabled = !hasEnoughData;
+            download30MinBtn.disabled = !(hasEnoughData && elapsedTime >= 30 * 60 * 1000);
+            download1HourBtn.disabled = !(hasEnoughData && elapsedTime >= 60 * 60 * 1000);
+        }
+        // Posture calibration
+        function calibratePosture() {
+            if (!hasMpuData) {
+                showNotification('MPU6050 not detected. Cannot calibrate posture without angle sensor.', '#F44336');
+                return;
+            }
+            
+            // Store current values as baseline
+            baselinePitch = pitch;
+            baselineRoll = roll;
+            baselineImbalance = imbalance;
+            isCalibrated = true;
+            
+            // Update UI (done in single batch)
+            pitchReferenceElement.style.transform = `rotate(${baselinePitch}deg)`;
+            rollReferenceElement.style.transform = `rotate(${baselineRoll}deg)`;
+            
+            // Show reference lines
+            pitchReferenceElement.style.display = 'block';
+            rollReferenceElement.style.display = 'block';
+            
+            // Calculate initial score
+            calculatePostureScore();
+            
+            // Show success notification
+            showNotification('Posture calibration successful! Current position set as baseline.', '#4CAF50');
+        }
+        
+        function resetCalibration() {
+            isCalibrated = false;
+            
+            // Reset UI in single batch
+            pitchReferenceElement.style.display = 'none';
+            rollReferenceElement.style.display = 'none';
+            postureScoreElement.textContent = '--';
+            postureProgressBarElement.style.width = '0%';
+            postureStatusElement.textContent = 'Not calibrated';
+            postureStatusElement.className = 'posture-status';
+            postureDeviationElement.textContent = 'Deviation from baseline: --';
+            
+            // Show notification
+            showNotification('Posture calibration reset.', '#607D8B');
+        }
+        
+        // Debounce filter changes to reduce network traffic
+        let filterUpdateTimeout = null;
+        const FILTER_UPDATE_DELAY = 300; // ms
+        
+        // Update filter value displays with debouncing
+        lowPassFreqSlider.addEventListener('input', function() {
+            lowPassValue.textContent = `${this.value} Hz`;
+            scheduleFilterUpdate();
+        });
+        
+        highPassFreqSlider.addEventListener('input', function() {
+            highPassValue.textContent = `${this.value} Hz`;
+            scheduleFilterUpdate();
+        });
+        
+        notchFilterCheckbox.addEventListener('change', function() {
+            // Immediate update for checkbox changes
+            updateFilterSettings();
+        });
+        
+        function scheduleFilterUpdate() {
+            // Clear any existing timeout
+            if (filterUpdateTimeout) {
+                clearTimeout(filterUpdateTimeout);
+            }
+            
+            // Schedule a new update
+            filterUpdateTimeout = setTimeout(updateFilterSettings, FILTER_UPDATE_DELAY);
+        }
+        
+        function updateFilterSettings() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const settings = {
+                    type: 'filter_settings',
+                    notch_enabled: notchFilterCheckbox.checked,
+                    low_pass_cutoff: parseFloat(lowPassFreqSlider.value),
+                    high_pass_cutoff: parseFloat(highPassFreqSlider.value)
+                };
+                
+                ws.send(JSON.stringify(settings));
+            }
+        }
+        
+        connectBtn.addEventListener('click', function() {
+            const serverUrl = serverUrlInput.value;
+            
+            // Close existing connection if any
+            if (ws) {
+                ws.close();
+            }
+            
+            // Create new WebSocket connection
+            try {
+                showNotification('Connecting to server...', '#2196F3');
+                ws = new WebSocket(serverUrl);
+                
+                // Message buffer and handling timer for batch processing
+                let messageQueue = [];
+                let messageProcessTimer = null;
+                const MESSAGE_BATCH_INTERVAL = 50; // Process messages in batches every 50ms
+                
+                // Process messages in batches to reduce rendering load
+                function processMessageBatch() {
+                    if (messageQueue.length === 0) {
+                        messageProcessTimer = null;
+                        return;
+                    }
+                    
+                    // Process up to 10 messages at once
+                    const messagesToProcess = messageQueue.splice(0, 10);
+                    let needsChartUpdate = false;
+                    let needsMpuUpdate = false;
+                    
+                    messagesToProcess.forEach(data => {
+                        if (data.type === 'mpu_status') {
+                            hasMpuData = data.available;
+                            angleSection.style.display = hasMpuData ? 'block' : 'none';
+                            postureScoreSection.style.display = hasMpuData ? 'block' : 'none';
+                        }
+                        else if (data.type === 'emg_data') {
+                            // Update raw data charts
+                            rawData1.push(data.raw1);
+                            rawData1.shift();
+                            rawData2.push(data.raw2);
+                            rawData2.shift();
+                            
+                            // Update filtered data charts
+                            filteredData1.push(data.filtered1);
+                            filteredData1.shift();
+                            filteredData2.push(data.filtered2);
+                            filteredData2.shift();
+                            
+                            needsChartUpdate = true;
+                            
+                            // Check if MPU data is available
+                            if (data.hasOwnProperty('pitch') && data.hasOwnProperty('roll')) {
+                                hasMpuData = true;
+                                
+                                // Only show sections once to avoid reflow
+                                if (angleSection.style.display === 'none') {
+                                    angleSection.style.display = 'block';
+                                    postureScoreSection.style.display = 'block';
+                                }
+                                
+                                // Update angle values
+                                pitch = data.pitch;
+                                roll = data.roll;
+                                needsMpuUpdate = true;
+                            }
+                            
+                            // Record data for export (at appropriate intervals)
+                            const currentTime = Date.now();
+                            if (currentTime - lastRecordTime >= RECORD_INTERVAL) {
+                                lastRecordTime = currentTime;
+                                recordDataPoint();
+                            }
+                            
+                            // If receiving data but ESP32 status is disconnected, fix it
+                            if (esp32Status.className.includes('disconnected')) {
+                                esp32Status.textContent = 'ESP32: Connected (auto-detected)';
+                                esp32Status.className = 'status connected';
+                            }
+                        }
+                        else if (data.type === 'emg_stats') {
+                            // Update statistics
+                            updateStats(data);
+                        }
+                        else if (data.type === 'esp32_status') {
+                            // Update ESP32 connection status
+                            if (data.status === 'connected') {
+                                esp32Status.textContent = `ESP32: Connected (${data.clientInfo})`;
+                                esp32Status.className = 'status connected';
+                            } else if (data.status === 'disconnected') {
+                                esp32Status.textContent = 'ESP32: Disconnected';
+                                esp32Status.className = 'status disconnected';
+                            }
+                        }
+                    });
+                    
+                    // Schedule UI updates
+                    if (needsChartUpdate) {
+                        pendingUpdates.charts = true;
+                    }
+                    
+                    if (needsMpuUpdate) {
+                        updateAngleDisplay();
+                    }
+                    
+                    // Request animation frame if needed
+                    if (needsChartUpdate || needsMpuUpdate) {
+                        requestUpdateFrame();
+                    }
+                    
+                    // Continue processing if there are more messages
+                    if (messageQueue.length > 0) {
+                        messageProcessTimer = setTimeout(processMessageBatch, MESSAGE_BATCH_INTERVAL);
+                    } else {
+                        messageProcessTimer = null;
+                    }
+                }
+                
+                ws.onopen = function() {
+                    connectionStatus.textContent = 'Connected';
+                    connectionStatus.className = 'status connected';
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    
+                    // Send initial filter settings
+                    updateFilterSettings();
+                    
+                    showNotification('Connected to server', '#4CAF50');
+                };
+                
+                ws.onclose = function() {
+                    connectionStatus.textContent = 'Disconnected';
+                    connectionStatus.className = 'status disconnected';
+                    esp32Status.textContent = 'ESP32: Disconnected';
+                    esp32Status.className = 'status disconnected';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    
+                    showNotification('Disconnected from server', '#F44336');
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                    connectionStatus.textContent = 'Error: Could not connect';
+                    connectionStatus.className = 'status disconnected';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    
+                    showNotification('Error connecting to server', '#F44336');
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        // Add message to queue
+                        messageQueue.push(data);
+                        
+                        // Start processing timer if not already running
+                        if (!messageProcessTimer) {
+                            messageProcessTimer = setTimeout(processMessageBatch, MESSAGE_BATCH_INTERVAL);
+                        }
+                    } catch (error) {
+                        console.error('Error processing message:', error);
+                    }
+                };
+                
+                // Use performance optimization techniques for WebSocket
+                ws.binaryType = "arraybuffer"; // More efficient for binary data if server supports it
+            } catch (error) {
+                console.error('WebSocket connection error:', error);
+                showNotification('Failed to connect to server', '#F44336');
+                
+                connectionStatus.textContent = 'Error: Could not connect';
+                connectionStatus.className = 'status disconnected';
+            }
+        });
+        
+        disconnectBtn.addEventListener('click', function() {
+            if (ws) {
+                ws.close();
+            }
+        });
+        
+        // Initialize angle markings on load
+        createAngleMarkings();
+        
+        // Event listeners for calibration buttons
+        calibratePostureBtn.addEventListener('click', calibratePosture);
+        resetCalibrationBtn.addEventListener('click', resetCalibration);
+        
+        // Event listeners for download buttons
+        download10MinBtn.addEventListener('click', () => generateCSV(10 * 60 * 1000));
+        download30MinBtn.addEventListener('click', () => generateCSV(30 * 60 * 1000));
+        download1HourBtn.addEventListener('click', () => generateCSV(60 * 60 * 1000));
+        downloadAllBtn.addEventListener('click', () => generateCSV());
+    </script>
+</body>
+</html>
