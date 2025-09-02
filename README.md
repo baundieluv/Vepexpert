@@ -1,153 +1,177 @@
-# Vepexpert EMG - Dual Channel EMG with Posture Analysis
+##Vepexpert EMG – Dual Channel EMG with Posture Analysis
 
-Sistema de monitoreo EMG de dos canales con análisis de postura utilizando ESP32 y sensor MPU6050.
+Vepexpert EMG is a dual-channel electromyography (EMG) monitoring system with integrated posture analysis. It is built on the ESP32 microcontroller and the MPU6050 sensor, featuring real-time signal processing, interactive visualization, and flexible data export.
 
-## Características
+ Developed at Universidad de Guadalajara as a Graduation Project.
 
--  Monitoreo EMG dual channel en tiempo real
--  Filtrado digital avanzado (notch, paso bajo, paso alto)
--  Análisis de postura usando MPU6050 (pitch y roll)
--  Sistema de calibración y scoring de postura
--  Visualización web interactiva con Chart.js
--  Exportación de datos a CSV
--  Soporte para Docker
+ ##Features
 
-## Componentes del Sistema
+Real-time dual-channel EMG monitoring
 
-### Hardware
-- **ESP32-WROOM**: Microcontrolador principal
-- **Sensores EMG**: Dos canales de entrada analógica
-- **MPU6050**: Sensor de 6-axis (acelerómetro + giroscopio)
+Advanced digital filtering (notch, low-pass, high-pass)
 
-### Software
-- **Servidor Python**: WebSocket server con filtrado digital
-- **Interface Web**: Dashboard interactivo HTML5/JavaScript
-- **Firmware ESP32**: Código Arduino para adquisición de datos
+Posture analysis with MPU6050 (pitch and roll)
 
-## Estructura del Proyecto
+Calibration and posture scoring system (0–100 scale)
 
-```
+Interactive web dashboard (Chart.js)
+
+Data export to CSV (10min, 30min, 1hr, or full session)
+
+Docker support for easy deployment
+
+## System Components
+Hardware
+
+ESP32-WROOM – main microcontroller
+
+EMG Sensors – two analog input channels
+
+MPU6050 – 6-axis accelerometer + gyroscope
+
+Software
+
+Python Server – WebSocket server with digital filtering
+
+Web Dashboard – HTML5/JavaScript interface
+
+ESP32 Firmware – Arduino-based data acquisition
+
+📂 Project Structure
 vepexpert-emg/
-├── server.py              # Servidor WebSocket principal
+├── server.py              # Main WebSocket server
 ├── static/
-│   └── index.html         # Interface web
-├── sketch_apr10a.ino      # Firmware ESP32
-├── Dockerfile             # Configuración Docker
-├── requirements.txt       # Dependencias Python
-└── README.md             # Este archivo
-```
+│   └── index.html         # Web dashboard
+├── sketch_apr10a.ino      # ESP32 firmware
+├── Dockerfile             # Docker configuration
+├── requirements.txt       # Python dependencies
+└── README.md              # This file
 
-## Requisitos
-
-### Python
-```bash
+## Installation & Setup
+1. Python Requirements
 pip install -r requirements.txt
-```
 
-### Hardware
-- ESP32-WROOM-32
-- Sensores EMG compatibles con ADC
-- MPU6050 (opcional para análisis de postura)
-- WiFi network
+2. Hardware Required
 
-## Configuración
+ESP32-WROOM-32
 
-### 1. ESP32 Configuration
-Edita las siguientes variables en `sketch_apr10a.ino`:
-```cpp
-const char* ssid = "TU_RED_WIFI";
-const char* password = "TU_PASSWORD";
-const char* ws_server = "IP_DEL_SERVIDOR";
-```
+EMG sensors (ADC compatible)
 
-### 2. Pines ESP32
-- EMG Channel 1: GPIO34
-- EMG Channel 2: GPIO35
-- I2C SDA: GPIO21
-- I2C SCL: GPIO22
+MPU6050 (optional for posture analysis)
 
-### 3. Servidor
-```bash
+WiFi connection
+
+3. ESP32 Configuration
+
+Edit sketch_apr10a.ino with your network and server details:
+
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_PASSWORD";
+const char* ws_server = "SERVER_IP";
+
+
+Pinout:
+
+EMG Channel 1 → GPIO34
+
+EMG Channel 2 → GPIO35
+
+I2C SDA → GPIO21
+
+I2C SCL → GPIO22
+
+4. Start the Server
 python server.py
-```
 
-Puertos por defecto:
-- WebSocket (Web clients): 8080
-- WebSocket (ESP32): 8081
-- HTTP (Interface): 8000
 
-## Uso con Docker
+Default ports:
 
-```bash
+WebSocket (Web clients): 8080
+
+WebSocket (ESP32): 8081
+
+HTTP (Dashboard): 8000
+
+## Docker Deployment
 # Build
 docker build -t vepexpert-emg .
 
 # Run
 docker run -p 8000:8000 -p 8080:8080 -p 8081:8081 vepexpert-emg
-```
 
-## Uso
+## Usage
 
-1. **Conectar Hardware**: Ensambla el ESP32 con sensores EMG y MPU6050
-2. **Cargar Firmware**: Sube `sketch_apr10a.ino` al ESP32
-3. **Iniciar Servidor**: Ejecuta `python server.py`
-4. **Acceder Interface**: Ve a `http://localhost:8000`
-5. **Conectar**: Usa el botón "Connect" en la interface web
-6. **Calibrar Postura**: Establece postura baseline cuando sea necesario
+Connect ESP32 with EMG sensors and MPU6050
 
-## Características Técnicas
+Upload sketch_apr10a.ino to ESP32
 
-### Filtrado Digital
-- **Notch Filter**: 60Hz (eliminación de interferencia de línea)
-- **Bandpass Filter**: 20-330Hz (configurable)
-- **Sample Rate**: 1650Hz
+Start the server: python server.py
 
-### Análisis de Postura
-- **Pitch**: Ángulo de inclinación forward/backward
-- **Roll**: Ángulo de inclinación side-to-side
-- **Scoring**: Sistema de puntuación 0-100
+Open http://localhost:8000 in your browser
 
-### Exportación de Datos
-- Formatos: CSV
-- Rangos: 10min, 30min, 1hora, sesión completa
-- Datos incluidos: RMS, Mean, Imbalance, Ángulos, Posture Score
+Press Connect on the dashboard
 
-## API WebSocket
+Calibrate baseline posture when prompted
 
-### Mensajes del ESP32 al Servidor
-```
-# Datos EMG con MPU
+## Technical Details
+Digital Filtering
+
+Notch filter: 60 Hz (line noise removal)
+
+Bandpass filter: 20–330 Hz (configurable)
+
+Sample rate: 1650 Hz
+
+Posture Analysis
+
+Pitch: forward/backward tilt angle
+
+Roll: side-to-side tilt angle
+
+Posture Score: 0–100 scale
+
+Data Export
+
+Format: CSV
+
+Metrics: RMS, Mean, Imbalance, Angles, Posture Score
+
+## WebSocket API
+ESP32 → Server
+# EMG with MPU
 "EMG1,EMG2,pitch,roll"
 
-# Datos EMG sin MPU
+# EMG only
 "EMG1,EMG2"
 
-# Estadísticas
+# Statistics
 "STATS,rms1,rms2,mean1,mean2,imbalance[,pitch,roll]"
-```
 
-### Mensajes del Cliente Web
-```json
+Web Client → Server
 {
   "type": "filter_settings",
   "notch_enabled": true,
   "low_pass_cutoff": 330.0,
   "high_pass_cutoff": 20.0
 }
-```
 
-## Contribuir
+## Contributing
 
-1. Fork el proyecto
-2. Crea una feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la branch (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+Fork the repository
 
-## Licencia
+Create a feature branch (git checkout -b feature/NewFeature)
 
-The GNU General Public License v3.0
+Commit changes (git commit -m 'Add NewFeature')
 
-## Contacto
+Push to branch (git push origin feature/NewFeature)
 
-Esteban León Treviño Martínez - estebanman03@hotmail.com
+Open a Pull Request
+
+## License
+
+This project is licensed under the GNU General Public License v3.0.
+
+## Contact
+
+Esteban León Treviño Martínez
+# estebanman03@hotmail.com
