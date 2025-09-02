@@ -1,10 +1,10 @@
-##Vepexpert EMG – Dual Channel EMG with Posture Analysis
+#Vepexpert EMG – Dual Channel EMG with Posture Analysis
 
 Vepexpert EMG is a dual-channel electromyography (EMG) monitoring system with integrated posture analysis. It is built on the ESP32 microcontroller and the MPU6050 sensor, featuring real-time signal processing, interactive visualization, and flexible data export.
 
  Developed at Universidad de Guadalajara as a Graduation Project.
 
- ##Features
+ #Features
 
 Real-time dual-channel EMG monitoring
 
@@ -20,7 +20,7 @@ Data export to CSV (10min, 30min, 1hr, or full session)
 
 Docker support for easy deployment
 
-## System Components
+# System Components
 Hardware
 
 ESP32-WROOM – main microcontroller
@@ -47,7 +47,7 @@ vepexpert-emg/
 ├── requirements.txt       # Python dependencies
 └── README.md              # This file
 
-## Installation & Setup
+# Installation & Setup
 1. Python Requirements
 pip install -r requirements.txt
 
@@ -92,14 +92,14 @@ WebSocket (ESP32): 8081
 
 HTTP (Dashboard): 8000
 
-## Docker Deployment
+# Docker Deployment
 # Build
 docker build -t vepexpert-emg .
 
 # Run
 docker run -p 8000:8000 -p 8080:8080 -p 8081:8081 vepexpert-emg
 
-## Usage
+# Usage
 
 Connect ESP32 with EMG sensors and MPU6050
 
@@ -113,7 +113,7 @@ Press Connect on the dashboard
 
 Calibrate baseline posture when prompted
 
-## Technical Details
+# Technical Details
 Digital Filtering
 
 Notch filter: 60 Hz (line noise removal)
@@ -136,7 +136,7 @@ Format: CSV
 
 Metrics: RMS, Mean, Imbalance, Angles, Posture Score
 
-## WebSocket API
+# WebSocket API
 ESP32 → Server
 # EMG with MPU
 "EMG1,EMG2,pitch,roll"
@@ -155,7 +155,7 @@ Web Client → Server
   "high_pass_cutoff": 20.0
 }
 
-## Contributing
+# Contributing
 
 Fork the repository
 
@@ -174,4 +174,4 @@ This project is licensed under the GNU General Public License v3.0.
 ## Contact
 
 Esteban León Treviño Martínez
-# estebanman03@hotmail.com
+ estebanman03@hotmail.com
