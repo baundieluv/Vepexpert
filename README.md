@@ -1,177 +1,167 @@
-# Vepexpert EMG – Dual Channel EMG with Posture Analysis
+# Vepexpert EMG – Dual-Channel EMG with Posture Analysis
 
-Vepexpert EMG is a dual-channel electromyography (EMG) monitoring system with integrated posture analysis. It is built on the ESP32 microcontroller and the MPU6050 sensor, featuring real-time signal processing, interactive visualization, and flexible data export.
+Vepexpert is a wearable system for **remote rehabilitation monitoring of the lower back**. It was designed for older adults and people with chronic low back pain (LBP), so that a therapist can follow their muscle activity and posture at a distance.
 
- Developed at Universidad de Guadalajara as a Graduation Project.
+A vest carries two EMG sensors and an MPU6050 motion sensor, connected to an ESP32. The ESP32 streams the signals over Wi-Fi to a Python server, which filters them in real time and serves a web dashboard for visualization, posture scoring and data export.
 
- # Features
+Developed at Universidad de Guadalajara as a graduation project.
 
-Real-time dual-channel EMG monitoring
+> **Note:** Vepexpert is a research prototype. It is not a certified medical device and is not intended for diagnosis.
 
-Advanced digital filtering (notch, low-pass, high-pass)
+## Features
 
-Posture analysis with MPU6050 (pitch and roll)
+- Real-time dual-channel EMG monitoring (1650 Hz sample rate)
+- Digital filtering: notch (mains noise), low-pass and high-pass, adjustable from the dashboard
+- Posture analysis with the MPU6050 (pitch and roll)
+- Baseline calibration and a 0–100 posture score
+- Interactive web dashboard (Chart.js)
+- CSV export (last 10 min, 30 min, 1 h, or the full session)
+- Docker support for easy deployment
 
-Calibration and posture scoring system (0–100 scale)
+## System Components
 
-Interactive web dashboard (Chart.js)
+### Hardware
 
-Data export to CSV (10min, 30min, 1hr, or full session)
+| Component | Role |
+|---|---|
+| ESP32-WROOM-32 | Main microcontroller, Wi-Fi |
+| 2 × EMG sensors (analog output) | Muscle activity, two channels |
+| MPU6050 | 6-axis accelerometer + gyroscope for posture (optional) |
 
-Docker support for easy deployment
+**Pinout**
 
-# System Components
-Hardware
+| Signal | ESP32 pin |
+|---|---|
+| EMG channel 1 | GPIO34 |
+| EMG channel 2 | GPIO35 |
+| I2C SDA (MPU6050) | GPIO21 |
+| I2C SCL (MPU6050) | GPIO22 |
 
-ESP32-WROOM – main microcontroller
+### Software
 
-EMG Sensors – two analog input channels
+- **ESP32 firmware** (`sketch_apr10a.ino`) – Arduino-based data acquisition and Wi-Fi/WebSocket streaming
+- **Python server** (`server.py`) – WebSocket server with real-time digital filtering
+- **Web dashboard** (`static/index.html`) – HTML5/JavaScript interface
 
-MPU6050 – 6-axis accelerometer + gyroscope
+## Project Structure
 
-Software
-
-Python Server – WebSocket server with digital filtering
-
-Web Dashboard – HTML5/JavaScript interface
-
-ESP32 Firmware – Arduino-based data acquisition
-
-📂 Project Structure
-vepexpert-emg/
-├── server.py              # Main WebSocket server
+```
+Vepexpert/
+├── server.py              # WebSocket server and filtering
 ├── static/
 │   └── index.html         # Web dashboard
 ├── sketch_apr10a.ino      # ESP32 firmware
 ├── Dockerfile             # Docker configuration
 ├── requirements.txt       # Python dependencies
-└── README.md              # This file
+├── LICENSE                # GPL-3.0
+└── README.md
+```
 
-# Installation & Setup
-1. Python Requirements
-pip install -r requirements.txt
+## Installation & Setup
 
-2. Hardware Required
+### 1. Configure the ESP32
 
-ESP32-WROOM-32
+Edit `sketch_apr10a.ino` with your own network and the IP address of the computer running the server:
 
-EMG sensors (ADC compatible)
-
-MPU6050 (optional for posture analysis)
-
-WiFi connection
-
-3. ESP32 Configuration
-
-Edit sketch_apr10a.ino with your network and server details:
-
+```cpp
 const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_PASSWORD";
+const char* password = "YOUR_WIFI_PASSWORD";
 const char* ws_server = "SERVER_IP";
+```
 
+Never commit real credentials to the repository.
 
-Pinout:
+Then upload the sketch to the ESP32 with the Arduino IDE (the `WebSockets` library by Markus Sattler is required).
 
-EMG Channel 1 → GPIO34
+### 2. Set the mains frequency
 
-EMG Channel 2 → GPIO35
+The notch filter removes power-line noise. It is set to **60 Hz** (Americas). In Europe and most of the world the mains frequency is **50 Hz**, so change this line in `server.py`:
 
-I2C SDA → GPIO21
+```python
+notch_b, notch_a = design_notch_filter(60.0, SAMPLE_RATE, Q_FACTOR)  # use 50.0 in Europe
+```
 
-I2C SCL → GPIO22
+### 3. Run the server
 
-4. Start the Server
+**With Python**
+
+```bash
+pip install -r requirements.txt
 python server.py
+```
 
+**With Docker**
 
-Default ports:
-
-WebSocket (Web clients): 8080
-
-WebSocket (ESP32): 8081
-
-HTTP (Dashboard): 8000
-
-# Docker Deployment
-## Build
+```bash
 docker build -t vepexpert-emg .
-
-## Run
 docker run -p 8000:8000 -p 8080:8080 -p 8081:8081 vepexpert-emg
+```
+
+Default ports (can be changed with the `HTTP_PORT`, `WEB_CLIENT_PORT` and `ESP32_PORT` environment variables):
+
+| Port | Use |
+|---|---|
+| 8000 | HTTP – dashboard |
+| 8080 | WebSocket – web clients |
+| 8081 | WebSocket – ESP32 |
 
 ## Usage
 
-Connect ESP32 with EMG sensors and MPU6050
+1. Power the ESP32 with the EMG sensors and MPU6050 connected.
+2. Start the server.
+3. Open http://localhost:8000 in your browser and press **Connect**.
+4. Calibrate the baseline posture when prompted.
+5. Monitor the signals and export the session to CSV when finished.
 
-Upload sketch_apr10a.ino to ESP32
+## Technical Details
 
-Start the server: python server.py
+**Filtering**
+- Notch filter: 60 Hz by default (50 Hz in Europe, see setup step 2), Q = 30
+- Band-pass: 20–330 Hz, 4th-order Butterworth (configurable from the dashboard)
+- Sample rate: 1650 Hz
 
-Open http://localhost:8000 in your browser
+**Posture analysis**
+- Pitch: forward/backward tilt
+- Roll: side-to-side tilt
+- Posture score: 0–100, relative to the calibrated baseline
 
-Press Connect on the dashboard
-
-Calibrate baseline posture when prompted
-
-# Technical Details
-Digital Filtering
-
-Notch filter: 60 Hz (line noise removal)
-
-Bandpass filter: 20–330 Hz (configurable)
-
-Sample rate: 1650 Hz
-
-Posture Analysis
-
-Pitch: forward/backward tilt angle
-
-Roll: side-to-side tilt angle
-
-Posture Score: 0–100 scale
-
-Data Export
-
-Format: CSV
-
-Metrics: RMS, Mean, Imbalance, Angles, Posture Score
+**Data export**
+- Format: CSV
+- Metrics: RMS, mean, channel imbalance, angles, posture score
 
 ## WebSocket API
-ESP32 → Server
-## EMG with MPU
-"EMG1,EMG2,pitch,roll"
 
-## EMG only
-"EMG1,EMG2"
+**ESP32 → server**
 
-## Statistics
-"STATS,rms1,rms2,mean1,mean2,imbalance[,pitch,roll]"
+```
+EMG1,EMG2,pitch,roll                              # EMG with MPU6050
+EMG1,EMG2                                         # EMG only
+STATS,rms1,rms2,mean1,mean2,imbalance[,pitch,roll] # statistics
+```
 
-Web Client → Server
+**Web client → server**
+
+```json
 {
   "type": "filter_settings",
   "notch_enabled": true,
   "low_pass_cutoff": 330.0,
   "high_pass_cutoff": 20.0
 }
+```
 
 ## Contributing
 
-Fork the repository
-
-Create a feature branch (git checkout -b feature/NewFeature)
-
-Commit changes (git commit -m 'Add NewFeature')
-
-Push to branch (git push origin feature/NewFeature)
-
-Open a Pull Request
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/NewFeature`
+3. Commit your changes: `git commit -m "Add NewFeature"`
+4. Push the branch: `git push origin feature/NewFeature`
+5. Open a pull request
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0.
+This project is licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
 
-# Contact
+## Contact
 
-Esteban León Treviño Martínez
- ## estebanman03@hotmail.com
+Esteban León Treviño Martínez – estebanman03@hotmail.com
